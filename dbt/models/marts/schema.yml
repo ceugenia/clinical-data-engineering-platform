@@ -1,32 +1,48 @@
+
 version: 2
+
 models:
   - name: dim_patient
     columns:
       - name: patient_id
-        tests: [not_null, unique]
+        tests:
+          - not_null
+          - unique
       - name: trial_id
         tests:
           - not_null
           - relationships:
-              to: ref('dim_trial')
-              field: trial_id
+              arguments:
+                to: ref('dim_trial')
+                field: trial_id
+
   - name: dim_trial
     columns:
       - name: trial_id
-        tests: [not_null, unique]
+        tests:
+          - not_null
+          - unique
+
   - name: fct_visit
     columns:
       - name: visit_id
-        tests: [not_null, unique]
+        tests:
+          - not_null
+          - unique
       - name: patient_id
         tests:
           - not_null
           - relationships:
-              to: ref('dim_patient')
-              field: patient_id
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+
   - name: mart_trial_operations
     columns:
       - name: trial_id
-        tests: [not_null, unique]
+        tests:
+          - not_null
+          - unique
       - name: participant_count
-        tests: [not_null]
+        tests:
+          - not_null

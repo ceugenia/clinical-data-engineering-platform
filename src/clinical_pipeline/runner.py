@@ -16,6 +16,7 @@ from clinical_pipeline.config import (
 )
 from clinical_pipeline.generate import generate_data
 from clinical_pipeline.ingest import ingest_sources
+from clinical_pipeline.incremental import apply_incremental_upserts
 from clinical_pipeline.transform import transform_to_silver
 
 
@@ -32,7 +33,8 @@ def run_pipeline(
     run_dbt: bool = True,
     seed: int = 42,
 ) -> dict[str, object]:
-    """Execute the clinical data pipeline and record success or failure."""
+    """Execute the clinical data pipeline and record execution metrics."""
+
     ensure_directories()
 
     run_id = str(uuid.uuid4())
@@ -41,20 +43,40 @@ def run_pipeline(
 
     bronze = {}
     silver = {}
+    incremental = {"status": "skipped"}
     dbt_status = "skipped"
 
+    status = "failed"
+    error = None
+    current_stage = "initialization"
+
     try:
+        # Step 1: Generate synthetic source data when requested.
         if generate:
+            current_stage = "generation"
             generate_data(seed=seed)
 
+        # Step 2: Ingest source CSV files into Bronze.
+        current_stage = "ingestion"
         bronze = ingest_sources()
+
+        # Step 3: Transform and validate Bronze data into Silver.
+        current_stage = "transformation"
         silver = transform_to_silver()
 
+        # Step 4: Upsert Silver records into DuckDB.
+        current_stage = "incremental"
+        incremental = apply_incremental_upserts()
+
+        # Step 5: Run dbt models and data quality tests.
         if run_dbt:
+            current_stage = "dbt"
+
             env = os.environ.copy()
             env["CLINICAL_DUCKDB_PATH"] = str(DB_PATH)
 
             dbt_executable = shutil.which("dbt")
+
             if dbt_executable is None:
                 raise RuntimeError(
                     "dbt executable not found. Install dbt-duckdb "
@@ -82,14 +104,17 @@ def run_pipeline(
             dbt_status = "passed"
 
         status = "success"
-        error = None
+        current_stage = "completed"
 
     except Exception as exc:
-        status = "failed"
         error = {
             "type": type(exc).__name__,
             "message": str(exc),
         }
+
+        if current_stage == "incremental":
+            incremental = {"status": "failed"}
+
         raise
 
     finally:
@@ -97,7 +122,7 @@ def run_pipeline(
 
         audit_record = {
             "run_id": run_id,
-            "status": status if "status" in locals() else "failed",
+            "status": status,
             "started_at": started_at.isoformat(),
             "finished_at": finished_at.isoformat(),
             "duration_seconds": round(
@@ -105,12 +130,13 @@ def run_pipeline(
             ),
             "bronze_row_counts": bronze,
             "silver_row_counts": silver,
+            "incremental": incremental,
             "dbt": dbt_status,
             "warehouse": str(DB_PATH),
-            "error": error if "error" in locals() else {
-                "type": "UnknownError",
-                "message": "Pipeline ended unexpectedly.",
-            },
+            "failed_stage": (
+                current_stage if status == "failed" else None
+            ),
+            "error": error,
         }
 
         _write_audit_log(audit_record)
