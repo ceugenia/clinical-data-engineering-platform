@@ -1,0 +1,88 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials/
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated pipeline data
+data/source/*
+data/bronze/*
+data/silver/*
+data/warehouse/*
+
+# Preserve directory structure
+!data/source/.gitkeep
+!data/bronze/.gitkeep
+!data/silver/.gitkeep
+!data/warehouse/.gitkeep
+
+# DuckDB
+*.duckdb
+*.duckdb.wal
+
+# Parquet
+*.parquet
+
+# dbt generated artifacts
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

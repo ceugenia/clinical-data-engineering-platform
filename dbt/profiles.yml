@@ -1,0 +1,7 @@
+clinical_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('CLINICAL_DUCKDB_PATH', 'data/warehouse/clinical.duckdb') }}"
+      threads: 4
