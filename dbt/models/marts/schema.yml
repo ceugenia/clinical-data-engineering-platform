@@ -1,13 +1,11 @@
-
 version: 2
 
 models:
   - name: dim_patient
+    description: One row per synthetic clinical-trial participant.
     columns:
       - name: patient_id
-        tests:
-          - not_null
-          - unique
+        tests: [not_null, unique]
       - name: trial_id
         tests:
           - not_null
@@ -15,20 +13,20 @@ models:
               arguments:
                 to: ref('dim_trial')
                 field: trial_id
+      - name: site_id
+        tests: [not_null]
 
   - name: dim_trial
+    description: One row per synthetic clinical trial.
     columns:
       - name: trial_id
-        tests:
-          - not_null
-          - unique
+        tests: [not_null, unique]
 
   - name: fct_visit
+    description: One row per deduplicated participant visit.
     columns:
       - name: visit_id
-        tests:
-          - not_null
-          - unique
+        tests: [not_null, unique]
       - name: patient_id
         tests:
           - not_null
@@ -36,13 +34,59 @@ models:
               arguments:
                 to: ref('dim_patient')
                 field: patient_id
+      - name: completed_flag
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+  - name: fct_lab_result
+    description: One row per deduplicated laboratory result.
+    columns:
+      - name: lab_result_id
+        tests: [not_null, unique]
+      - name: patient_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_id
+      - name: visit_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_visit')
+                field: visit_id
+      - name: result_value
+        tests: [not_null]
 
   - name: mart_trial_operations
+    description: Trial-level enrollment, visit, and lab operations metrics.
+    columns:
+      - name: trial_id
+        tests: [not_null, unique]
+      - name: participant_count
+        tests: [not_null]
+
+  - name: mart_lab_analyte
+    description: Aggregate laboratory metrics by analyte and unit.
+    columns:
+      - name: analyte
+        tests: [not_null]
+      - name: measurement_count
+        tests: [not_null]
+
+  - name: mart_site_performance
+    description: Trial and site-level enrollment and visit completion metrics.
     columns:
       - name: trial_id
         tests:
           - not_null
-          - unique
-      - name: participant_count
-        tests:
-          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_trial')
+                field: trial_id
+      - name: site_id
+        tests: [not_null]

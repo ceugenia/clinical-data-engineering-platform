@@ -1,20 +1,40 @@
 name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+
 jobs:
-  test-and-lint:
+  test-lint-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - run: python -m pip install --upgrade pip
-      - run: pip install -e ".[dev]"
-      - run: ruff check .
-      - run: pytest
-      - run: python -m clinical_pipeline run
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Unit tests with coverage
+        run: pytest --cov=clinical_pipeline --cov-report=term-missing
+
+      - name: Run complete pipeline and dbt tests
+        run: python -m clinical_pipeline run
+
+      - name: Build Docker image
+        run: docker build -t clinical-data-engineering-platform:ci .

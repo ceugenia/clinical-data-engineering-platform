@@ -1,0 +1,55 @@
+{
+  "status": "passed",
+  "generated_at": "2026-11-15T22:37:44.454349+00:00",
+  "checks": [
+    {
+      "name": "required_columns_present",
+      "status": "passed"
+    },
+    {
+      "name": "source_timestamps_valid",
+      "status": "passed"
+    },
+    {
+      "name": "business_keys_unique_after_deduplication",
+      "status": "passed"
+    },
+    {
+      "name": "domain_values_valid",
+      "status": "passed"
+    },
+    {
+      "name": "referential_integrity",
+      "status": "passed"
+    }
+  ],
+  "tables": {
+    "patients": {
+      "source_rows": 240,
+      "silver_rows": 240,
+      "deduplicated_rows": 0
+    },
+    "trials": {
+      "source_rows": 4,
+      "silver_rows": 4,
+      "deduplicated_rows": 0
+    },
+    "visits": {
+      "source_rows": 1201,
+      "silver_rows": 1200,
+      "deduplicated_rows": 1
+    },
+    "lab_results": {
+      "source_rows": 1861,
+      "silver_rows": 1860,
+      "deduplicated_rows": 1
+    }
+  },
+  "totals": {
+    "source_rows": 3306,
+    "silver_rows": 3304,
+    "deduplicated_rows": 2
+  },
+  "rejected_rows": 0,
+  "note": "Invalid structural or referential data fails the batch. Duplicate source rows are counted separately as deduplicated rows."
+}

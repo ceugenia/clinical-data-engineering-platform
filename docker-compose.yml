@@ -1,0 +1,12 @@
+services:
+  clinical-platform:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      CLINICAL_DATA_DIR: /app/data
+    volumes:
+      - clinical_data:/app/data
+
+volumes:
+  clinical_data:

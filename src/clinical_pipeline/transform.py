@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +8,7 @@ from clinical_pipeline.config import (
     TABLES,
     ensure_directories,
 )
+from clinical_pipeline.quality import write_quality_report
 
 
 REQUIRED = {
@@ -91,15 +91,22 @@ def transform_to_silver(
 
     bronze_dir = Path(bronze_dir)
     silver_dir = Path(silver_dir)
+    report_path = silver_dir.parent / "quality" / "quality_report.json"
+    report_path.unlink(missing_ok=True)
 
-    runs = sorted(bronze_dir.glob("run_id=*"))
+    # Ignore staging directories and legacy/incomplete runs without _SUCCESS.
+    runs = sorted(
+        run for run in bronze_dir.glob("run_id=*")
+        if run.is_dir() and (run / "_SUCCESS").is_file()
+    )
 
     if not runs:
         raise FileNotFoundError(
-            "No Bronze snapshot found; run ingestion first."
+            "No completed Bronze batch found; run ingestion first."
         )
 
     frames = {}
+    source_row_counts = {}
 
     # Load and validate Bronze datasets.
     for table in TABLES:
@@ -128,6 +135,7 @@ def transform_to_silver(
             )
 
         frames[table] = frame
+        source_row_counts[table] = len(frame)
 
     # Deduplicate using business keys and newest source timestamps.
     patients = keep_latest_record(
@@ -358,13 +366,22 @@ def transform_to_silver(
         exist_ok=True,
     )
 
-    for name, frame in output.items():
-        frame.to_parquet(
-            silver_dir / f"{name}.parquet",
-            index=False,
-        )
+    silver_counts = {}
+    table_metrics = {}
 
-    return {
-        name: len(frame)
-        for name, frame in output.items()
-    }
+    for name, frame in output.items():
+        silver_counts[name] = len(frame)
+        table_metrics[name] = {
+            "source_rows": source_row_counts[name],
+            "silver_rows": len(frame),
+            "deduplicated_rows": source_row_counts[name] - len(frame),
+        }
+
+        destination = silver_dir / f"{name}.parquet"
+        temporary = silver_dir / f".{name}.tmp.parquet"
+        frame.to_parquet(temporary, index=False)
+        temporary.replace(destination)
+
+    write_quality_report(table_metrics, report_path)
+
+    return silver_counts
