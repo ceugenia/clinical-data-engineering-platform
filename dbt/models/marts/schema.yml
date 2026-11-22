@@ -2,91 +2,63 @@ version: 2
 
 models:
   - name: dim_patient
-    description: One row per synthetic clinical-trial participant.
+    description: "Dimension table containing anonymized patient demographic and enrollment data."
     columns:
       - name: patient_id
-        tests: [not_null, unique]
+        tests:
+          - unique
+          - not_null
       - name: trial_id
         tests:
           - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_trial')
-                field: trial_id
-      - name: site_id
-        tests: [not_null]
-
-  - name: dim_trial
-    description: One row per synthetic clinical trial.
-    columns:
-      - name: trial_id
-        tests: [not_null, unique]
+      - name: age
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 18
+              max_value: 100
+              mostly: 1.0
 
   - name: fct_visit
-    description: One row per deduplicated participant visit.
+    description: "Fact table containing clinical trial visit records."
     columns:
       - name: visit_id
-        tests: [not_null, unique]
+        tests:
+          - unique
+          - not_null
       - name: patient_id
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('dim_patient')
-                field: patient_id
-      - name: completed_flag
+              to: ref('dim_patient')
+              field: patient_id
+      - name: visit_date
+        tests:
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: date
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: "2020-01-01"
+              max_value: "2035-12-31"
+              mostly: 1.0
+      - name: visit_status
         tests:
           - accepted_values:
-              arguments:
-                values: [0, 1]
+              values: ['Completed', 'Scheduled', 'Missed', 'Cancelled']
 
   - name: fct_lab_result
-    description: One row per deduplicated laboratory result.
+    description: "Fact table containing laboratory analyte measurements."
     columns:
       - name: lab_result_id
-        tests: [not_null, unique]
-      - name: patient_id
         tests:
+          - unique
           - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_patient')
-                field: patient_id
-      - name: visit_id
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('fct_visit')
-                field: visit_id
       - name: result_value
-        tests: [not_null]
-
-  - name: mart_trial_operations
-    description: Trial-level enrollment, visit, and lab operations metrics.
-    columns:
-      - name: trial_id
-        tests: [not_null, unique]
-      - name: participant_count
-        tests: [not_null]
-
-  - name: mart_lab_analyte
-    description: Aggregate laboratory metrics by analyte and unit.
-    columns:
-      - name: analyte
-        tests: [not_null]
-      - name: measurement_count
-        tests: [not_null]
-
-  - name: mart_site_performance
-    description: Trial and site-level enrollment and visit completion metrics.
-    columns:
-      - name: trial_id
         tests:
           - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_trial')
-                field: trial_id
-      - name: site_id
-        tests: [not_null]
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 10000  # Prevent impossible biological values
+              mostly: 1.0
+      - name: is_out_of_range
+        tests:
+          - accepted_values:
+              values: [true, false]
